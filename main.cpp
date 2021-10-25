@@ -69,6 +69,9 @@ int divisions_x = 400;
 int divisions_y = 400;
 bool drill = false;
 bool show_path = true;
+float drill_max_depth = 20.0f;
+float material_min_height = 5.0f;
+ErrorRaport error = {};
 
 int number_of_divisions = 20;
 Camera cam;
@@ -455,15 +458,11 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 		float movement = 1.0f - yoffset * precision;
 		if (movement <= 0.0f)
 			movement = 0.1f;
-		//TODO: przerobiæ to na coœ ³adniejszego;
-		//cam.ScaleWorld({ movement,movement,movement });
 		cameraFront = glm::normalize(lookAt - cameraPos);
 		float dist = glm::length(lookAt - cameraPos);
 		cameraPos = lookAt - (cameraFront * dist * movement);
 		cam.LookAt(cameraPos, cameraFront, cameraUp);
 	}
-
-	//cam.Zoom(yoffset * precision);
 
 }
 
@@ -561,21 +560,25 @@ void create_gui() {
 	ImGui::Checkbox("Drill", &drill);
 
 	if (ImGui::Button("Drill All")) {
-		milling_tool->DrillAll();
+		error = milling_tool->DrillAll();
 	}
-	if (ImGui::Button("Set Drill flat")) {
-		milling_tool->SetStampType(StampType::Flat);
-	}
-	if (ImGui::Button("Set Drill sfere")) {
-		milling_tool->SetStampType(StampType::Round);
-	}
+	if (ImGui::CollapsingHeader("Drill configuration"))
+	{
+		ImGui::InputFloat("Drill size", &drill_size);
+		if (ImGui::Button("Set Drill flat")) {
+			milling_tool->SetStampType(StampType::Flat, drill_size);
+		}
+		if (ImGui::Button("Set Drill sphere")) {
+			milling_tool->SetStampType(StampType::Round, drill_size);
+		}
 
+		ImGui::InputFloat("Drill operating height", &drill_max_depth);
+		ImGui::InputFloat("Minimal thickness of board", &material_min_height);
+		if (ImGui::Button("Set drill restrictions")) {
+			milling_tool->SetRestrictions(drill_max_depth, material_min_height);
+		}
+	}
 	ImGui::InputFloat("Drilling speed", &speed);
-	ImGui::InputFloat("Drill size", &drill_size);
-	if (ImGui::Button("Set Drill size")) {
-		milling_tool->UpdateDrillSize(drill_size);
-	}
-
 	ImGui::Checkbox("Show milling path", &show_path);
 
 	ImGui::InputFloat("Size x", &size_x);
@@ -588,6 +591,23 @@ void create_gui() {
 		milling_tool->InitializeDrilledMaterial({ size_x,size_y,size_z }, { divisions_x,divisions_y });
 	}
 
+	if (error.is_error) {
+		ImGui::OpenPopup("my_select_popup");
+	}
+	if (ImGui::BeginPopup("my_select_popup"))
+	{
+		ImGui::Text(error.problem.c_str());
+		ImGui::Separator();
+		if (ImGui::Button("Close")) {
+			error = {};
+			drill = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+
+
+
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 }
@@ -595,5 +615,5 @@ void create_gui() {
 void drill_simulation()
 {
 	if (!drill) return;
-	milling_tool->MoveTool(deltaTime, speed);
+	error = milling_tool->MoveTool(deltaTime, speed);
 }

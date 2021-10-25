@@ -14,6 +14,7 @@ public:
     void Update() override;
     void DeleteFirstPoint();
     bool IsValidPath();
+    int size() { return points_.size(); };
     glm::vec3 GetFirstPoint();
     glm::vec3 GetSecondPoint();
     void ClearPoints();

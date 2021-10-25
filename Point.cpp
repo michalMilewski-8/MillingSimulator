@@ -15,43 +15,59 @@ void Point::InitializeDrilledMaterial(glm::vec3 size, glm::uvec2 points_denisity
 	UpdateDrillSize(drill_size_real);
 }
 
-void Point::MoveTool(float delta_time, float speed)
+ErrorRaport Point::MoveTool(float delta_time, float speed)
 {
-	if (!current_block) return;
-	if (!current_path->IsValidPath()) return;
+	if (!current_block) return {};
+	if (!current_path->IsValidPath()) return {};
 	float movement_dist = speed * delta_time;
+	ErrorRaport error;
 	while (movement_dist > 0.0 && current_path->IsValidPath()) {
 		//float movement_dist = std::min(0.1f, movement_dist_r);
 		glm::vec3 movement_to_perform = current_path->GetSecondPoint() - GetPosition();
 		float dist = glm::length(movement_to_perform);
 		if (dist <= movement_dist) {
-			drill_path(GetPosition(), current_path->GetSecondPoint());
+			error = drill_path(GetPosition(), current_path->GetSecondPoint());
+			if (error.is_error) return error;
 			MoveObject(movement_to_perform);
 			movement_dist -= dist;
 			current_path->DeleteFirstPoint();
 		}
 		else {
 			auto new_position = GetPosition() + movement_to_perform * (movement_dist / dist);
-			drill_path(GetPosition(), new_position);
+			error = drill_path(GetPosition(), new_position);
+			if (error.is_error) return error;
 			MoveObjectTo(new_position);
 			movement_dist -= dist;
 		}
 		//movement_dist_r -= movement_dist;
 	}
 	current_block->Update();
+	return {};
 }
 
-void Point::DrillAll()
+ErrorRaport Point::DrillAll()
 {
-	if (!current_block) return;
-	if (!current_path->IsValidPath()) return;
-
+	if (!current_block) return {};
+	if (!current_path->IsValidPath()) return {};
+	ErrorRaport error;
+	int length = current_path->size();
+	int done = 0;
+	int last_percent = 0;
+	int percent;
 	while (current_path->IsValidPath()) {
-		drill_path(GetPosition(), current_path->GetSecondPoint());
+		error = drill_path(GetPosition(), current_path->GetSecondPoint());
+		if (error.is_error) return error;
 		MoveObjectTo(current_path->GetSecondPoint());
 		current_path->DeleteFirstPoint();
+		done++;
+		percent = (done / (float)length) * 100;
+		if (last_percent != percent) {
+			std::cout << "Progress: " << percent <<"% done"<< std::endl;
+			last_percent = percent;
+		}
 	}
 	current_block->Update();
+	return {};
 }
 
 void Point::SetViewPos(glm::vec3 view_pos)
@@ -94,12 +110,9 @@ void Point::UpdateDrillSize(float new_size)
 			if (new_size_sq >= y_real_sq + x_real_sq) {
 				if (stamp_type == StampType::Flat) {
 					stamp.push_back({ i,j,0.0f });
-					std::cout << "x: " << i << " y: " << j << " z: " << 0.0f << std::endl;
 				}
 				else {
 					stamp.push_back({ i,j,half_new_size - std::sqrtf(new_size_sq - (y_real_sq + x_real_sq)) });
-					std::cout << "x: " << i << " y: " << j << " z: " << half_new_size - std::sqrtf(new_size_sq - (y_real_sq + x_real_sq)) << std::endl;
-
 				}
 			}
 
@@ -139,15 +152,16 @@ void Point::update_object()
 	glEnableVertexAttribArray(1);
 }
 
-void Point::drill_path(glm::vec3 start, glm::vec3 end)
+ErrorRaport Point::drill_path(glm::vec3 start, glm::vec3 end)
 {
 	//http://tech-algorithm.com/articles/drawing-line-using-bresenham-algorithm/
-
+	ErrorRaport error;
 
 	start = current_block->TransformToDivisions(start);
 	end = current_block->TransformToDivisions(end);
 
-	drill(start);
+	error = drill(start);
+	if (error.is_error) return error;
 
 	auto original_pos = start;
 	int w = std::round(end.x - start.x);
@@ -168,7 +182,8 @@ void Point::drill_path(glm::vec3 start, glm::vec3 end)
 	int numerator = longest >> 1;
 	float z_diff = (end.z - start.z) / longest;
 	for (int i = 0; i <= longest; i++) {
-		drill({ start.x, start.y, start.z + z_diff * i });
+		error = drill({ start.x, start.y, start.z + z_diff * i });
+		if (error.is_error) return error;
 		numerator += shortest;
 		if (!(numerator < longest)) {
 			numerator -= longest;
@@ -180,18 +195,33 @@ void Point::drill_path(glm::vec3 start, glm::vec3 end)
 			start.y += dy2;
 		}
 	}
-	drill(end);
+	error = drill(end);
+	if (error.is_error) return error;
+	return {};
 }
 
-void Point::drill(glm::vec3 drill_point)
+ErrorRaport Point::drill(glm::vec3 drill_point)
 {
 	int x = drill_point.x;
 	int y = drill_point.y;
 	float z = drill_point.z;
 
+	float diff, x_n, y_n, z_n, current_h;
+
+
 	for (int i = 0; i < stamp.size(); i++) {
-		if (current_block->GetHeight(x + stamp[i].x, y + stamp[i].y) > z + stamp[i].z_diff)
-			current_block->SetHeight(x + stamp[i].x, y + stamp[i].y, z + stamp[i].z_diff);
+		x_n = stamp[i].x + x;
+		y_n = stamp[i].y + y;
+		z_n = stamp[i].z_diff + z;
+		current_h = current_block->GetHeight(x_n, y_n);
+		if (current_h > z_n) {
+			if (current_h - drill_max_depth > z_n)
+				return { "It's too deep senpai..." };
+			if (z_n < block_min_height)
+				return { "You can not make it that thin" };
+			current_block->SetHeight(x_n, y_n, z_n);
+		}
 	}
+	return {};
 }
 
