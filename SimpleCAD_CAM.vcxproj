@@ -24,6 +24,7 @@
     <ProjectGuid>{61e0d20d-7e5e-4250-a541-b096d87f8bfc}</ProjectGuid>
     <RootNamespace>SimpleCADCAM</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SimpleMillingSimulator</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

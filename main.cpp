@@ -530,6 +530,17 @@ void main_menu() {
 			}
 			milling_tool->current_path->Reverse();
 			milling_tool->MoveObjectTo(milling_tool->current_path->GetFirstPoint());
+
+			if (file_to_open.size() >= 3) {
+				int size_;
+				char type;
+#pragma warning(suppress : 4996)
+				int result = sscanf(file_to_open.substr(file_to_open.size() - 3, 3).c_str(), "%c%2d",
+					&type, &size_);
+				if (result == 2) {
+					milling_tool->SetStampType(type == 'f' ? StampType::Flat : StampType::Round, size_);
+				}
+			}
 		}
 
 		// close
@@ -552,7 +563,12 @@ void create_gui() {
 	if (ImGui::Button("Drill All")) {
 		milling_tool->DrillAll();
 	}
-
+	if (ImGui::Button("Set Drill flat")) {
+		milling_tool->SetStampType(StampType::Flat);
+	}
+	if (ImGui::Button("Set Drill sfere")) {
+		milling_tool->SetStampType(StampType::Round);
+	}
 
 	ImGui::InputFloat("Drilling speed", &speed);
 	ImGui::InputFloat("Drill size", &drill_size);

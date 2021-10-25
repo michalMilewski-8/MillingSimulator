@@ -59,8 +59,8 @@ void Object::DrawObject(glm::mat4 mvp_)
 
 void Object::MoveObject(glm::vec3 movement)
 {
-	if (moved) return;
 	position += movement;
+	if (moved) return;
 	glm::mat4 translate_ = glm::mat4(1.0f);
 	translate_[3][0] = position.x;
 	translate_[3][1] = position.y;

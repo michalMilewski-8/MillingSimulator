@@ -19,11 +19,9 @@ void Point::MoveTool(float delta_time, float speed)
 {
 	if (!current_block) return;
 	if (!current_path->IsValidPath()) return;
-	static int longer = 0;
-	static int shorter = 0;
-	float movement_dist_r = speed * delta_time;
-	while (movement_dist_r > 0.0 && current_path->IsValidPath()) {
-		float movement_dist = std::min(0.1f, movement_dist_r);
+	float movement_dist = speed * delta_time;
+	while (movement_dist > 0.0 && current_path->IsValidPath()) {
+		//float movement_dist = std::min(0.1f, movement_dist_r);
 		glm::vec3 movement_to_perform = current_path->GetSecondPoint() - GetPosition();
 		float dist = glm::length(movement_to_perform);
 		if (dist <= movement_dist) {
@@ -31,16 +29,14 @@ void Point::MoveTool(float delta_time, float speed)
 			MoveObject(movement_to_perform);
 			movement_dist -= dist;
 			current_path->DeleteFirstPoint();
-			shorter++;
 		}
 		else {
-			auto path_wersor = glm::normalize(movement_to_perform);
-			auto new_position = GetPosition() + path_wersor * movement_dist;
+			auto new_position = GetPosition() + movement_to_perform * (movement_dist / dist);
 			drill_path(GetPosition(), new_position);
 			MoveObjectTo(new_position);
-			longer++;
+			movement_dist -= dist;
 		}
-		movement_dist_r -= movement_dist;
+		//movement_dist_r -= movement_dist;
 	}
 	current_block->Update();
 }
@@ -51,21 +47,9 @@ void Point::DrillAll()
 	if (!current_path->IsValidPath()) return;
 
 	while (current_path->IsValidPath()) {
-		float movement_dist = 1.0f;
-		glm::vec3 movement_to_perform = current_path->GetSecondPoint() - GetPosition();
-		float dist = glm::length(movement_to_perform);
-		if (dist <= movement_dist) {
-			drill_path(GetPosition(), current_path->GetSecondPoint());
-			MoveObject(movement_to_perform);
-			current_path->DeleteFirstPoint();
-		}
-		else {
-			auto path_wersor = glm::normalize(movement_to_perform);
-			auto new_position = GetPosition() + path_wersor * movement_dist;
-			drill_path(GetPosition(), new_position);
-			MoveObjectTo(new_position);
-		}
-
+		drill_path(GetPosition(), current_path->GetSecondPoint());
+		MoveObjectTo(current_path->GetSecondPoint());
+		current_path->DeleteFirstPoint();
 	}
 	current_block->Update();
 }
@@ -92,9 +76,36 @@ void Point::UpdateDrillSize(float new_size)
 {
 	drill_size_real = new_size;
 	if (!current_block) return;
+	stamp.clear();
 	drill_size_divisions = {
-		std::round((new_size / current_block->GetXSize()) * current_block->GetXDivisions()) ,
-		std::round((new_size / current_block->GetYSize()) * current_block->GetYDivisions()) };
+		std::max(new_size * current_block->GetXDivisions() / current_block->GetXSize(),1.0f) ,
+		std::max(new_size * current_block->GetYDivisions() / current_block->GetYSize(),1.0f) };
+
+	float new_size_sq = new_size * new_size / 4.0f;
+	float half_new_size = new_size / 2.0f;
+	float x_diff_to_real = current_block->GetXSize() / current_block->GetXDivisions();
+	float y_diff_to_real = current_block->GetYSize() / current_block->GetYDivisions();
+	for (int i = -(int)(drill_size_divisions.x / 2.0f); i <= (int)(drill_size_divisions.x / 2.0f); i++) {
+		float x_real = i * x_diff_to_real;
+		float x_real_sq = x_real * x_real;
+		for (int j = -(int)(drill_size_divisions.y / 2.0f); j <= (int)(drill_size_divisions.y / 2.0f); j++) {
+			float y_real = j * y_diff_to_real;
+			float y_real_sq = y_real * y_real;
+			if (new_size_sq >= y_real_sq + x_real_sq) {
+				if (stamp_type == StampType::Flat) {
+					stamp.push_back({ i,j,0.0f });
+					std::cout << "x: " << i << " y: " << j << " z: " << 0.0f << std::endl;
+				}
+				else {
+					stamp.push_back({ i,j,half_new_size - std::sqrtf(new_size_sq - (y_real_sq + x_real_sq)) });
+					std::cout << "x: " << i << " y: " << j << " z: " << half_new_size - std::sqrtf(new_size_sq - (y_real_sq + x_real_sq)) << std::endl;
+
+				}
+			}
+
+		}
+	}
+
 }
 
 float Point::GetDrillSize()
@@ -178,14 +189,9 @@ void Point::drill(glm::vec3 drill_point)
 	int y = drill_point.y;
 	float z = drill_point.z;
 
-	for (int i = 0; i < drill_size_divisions.x; i++) {
-		for (int j = 0; j < drill_size_divisions.y; j++) {
-			float current_height = current_block->GetHeight(x + i, y + j);
-			if (current_height > z) current_block->SetHeight(x + i, y + j, z);
-
-			current_height = current_block->GetHeight(x - i, y - j);
-			if (current_height > z) current_block->SetHeight(x - i, y - j, z);
-		}
+	for (int i = 0; i < stamp.size(); i++) {
+		if (current_block->GetHeight(x + stamp[i].x, y + stamp[i].y) > z + stamp[i].z_diff)
+			current_block->SetHeight(x + stamp[i].x, y + stamp[i].y, z + stamp[i].z_diff);
 	}
 }
 

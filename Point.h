@@ -3,6 +3,18 @@
 #include "Line.h"
 #include "Block.h"
 
+struct StampPoint {
+	StampPoint(int x_, int y_, float z_) : x(x_), y(y_), z_diff(z_) {};
+	int x;
+	int y;
+	float z_diff;
+};
+
+enum StampType {
+Flat,
+Round
+};
+
 class Point :
 	public Object
 {
@@ -13,6 +25,8 @@ public:
 	void MoveTool(float delta_time, float speed);
 	void DrillAll();
 	void SetViewPos(glm::vec3 view_pos);
+	void SetStampType(StampType type) { stamp_type = type; UpdateDrillSize(drill_size_real); };
+	void SetStampType(StampType type, float new_size) { stamp_type = type; UpdateDrillSize(new_size); };
 
 	void DrawObject(glm::mat4 mvp) override;
 
@@ -27,6 +41,9 @@ private:
 	void drill(glm::vec3 drill_point);
 
 	float drill_size_real = 10.0f;
-	glm::uvec2 drill_size_divisions;
+	glm::uvec2 drill_size_divisions = {1,1};
+	StampType stamp_type = StampType::Flat;
+
+	std::vector<StampPoint> stamp = {};
 };
 
