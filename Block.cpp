@@ -4,7 +4,7 @@
 
 glm::vec3 Block::TransformToDivisions(glm::vec3 pos) const
 {
-	return { std::round((pos.y / (double)y_size + 0.5f) * (y_divisions - 1)), std::round((pos.x / (double)x_size + 0.5f) * (x_divisions - 1)),pos.z };
+	return {  std::round((pos.x / (double)x_size + 0.5f) * (x_divisions - 1)),std::round((pos.y / (double)y_size + 0.5f) * (y_divisions - 1)),pos.z };
 }
 
 void Block::SetViewPos(glm::vec3 view_pos)
@@ -19,16 +19,17 @@ void Block::Update()
 
 float Block::GetHeight(int x, int y)
 {
-	if (x >= 0 && x < x_divisions && y >= 0 && y < x_divisions)
-		return data[x * x_divisions + y];
+	
+	if (x >= 0 && x < x_divisions && y >= 0 && y < y_divisions)
+		return data[y * x_divisions + x];
 	else
 		return -100.0f;
 }
 
 void Block::SetHeight(int x, int y, float val)
 {
-	if (x >= 0 && x < x_divisions && y >= 0 && y < x_divisions)
-		data[x * x_divisions + y] = val;
+	if (x >= 0 && x < x_divisions && y >= 0 && y < y_divisions)
+		data[y * x_divisions + x] = val;
 }
 
 void Block::create_block_points()
@@ -225,13 +226,13 @@ void Block::create_block_points()
 
 	for (int i = 0; i < x_divisions - 1; i++) {
 		for (int j = 0; j < y_divisions - 1; j++) {
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * x_divisions + (j + 0));
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * x_divisions + (j + 1));
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * x_divisions + (j + 1));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * y_divisions + (j + 0));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * y_divisions + (j + 1));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * y_divisions + (j + 1));
 
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * x_divisions + (j + 1));
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * x_divisions + (j + 0));
-			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * x_divisions + (j + 0));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * y_divisions + (j + 1));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 1) * y_divisions + (j + 0));
+			quads.push_back(4 * x_divisions + 4 * y_divisions + (i + 0) * y_divisions + (j + 0));
 
 		}
 	}
@@ -305,8 +306,8 @@ void Block::create_heighmap()
 	//	}
 	//	tx += 0.03141592653 * 2.3;
 	//}
-	for (int i = 0; i < x_divisions; i++) {
-		for (int j = 0; j < y_divisions; j++) {
+	for (int i = 0; i < y_divisions; i++) {
+		for (int j = 0; j < x_divisions; j++) {
 			//data.push_back(height_map[i][j]);
 			data.push_back(z_size);
 		}
